@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vecturnal — SVG Pattern Generator</title>
+<style>
+:root {
+  --bg-primary: #ffffff;
+  --bg-secondary: #f4f4f2;
+  --bg-tertiary: #ebebea;
+  --text-primary: #1a1a18;
+  --text-secondary: #6b6b66;
+  --text-tertiary: #9b9b96;
+  --border-subtle: rgba(0,0,0,0.10);
+  --border-medium: rgba(0,0,0,0.18);
+  --accent: #414ac8;
+  --accent-hover: #3537b0;
+  --accent-subtle: rgba(90, 65, 200, 0.09);
+  --radius-sm: 0px;
+  --radius-md: 0px;
+  --radius-lg: 0px;
+}
+[data-theme="dark"] {
+  --bg-primary: #1c1c1a;
+  --bg-secondary: #252523;
+  --bg-tertiary: #2e2e2b;
+  --text-primary: #f0efec;
+  --text-secondary: #9b9b96;
+  --text-tertiary: #6b6b66;
+  --border-subtle: rgba(255,255,255,0.08);
+  --border-medium: rgba(255,255,255,0.14);
+  --accent: #5a66d4;
+  --accent-hover: #6b73e0;
+  --accent-subtle: rgba(102, 90, 212, 0.12);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{overflow: hidden; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg-tertiary);color:var(--text-primary);font-size:13px;transition:background .2s,color .2s}
+.app{height: 100vh;display:grid;grid-template-columns:260px 1fr; grid-template-rows:100vh;}
+
+/* panel */
+.panel{overflow-y:scroll; background:var(--bg-secondary);border-right:0.5px solid var(--border-subtle);padding:12px;display:flex;flex-direction:column;gap:10px}
+.panel-title{font-size:11px;font-weight:600;letter-spacing:.09em;color:var(--text-tertiary);padding:4px 2px 2px;text-transform:uppercase}
+
+/* canvas */
+.canvas-area{display:flex;flex-direction:column;background:var(--bg-primary);transition:background .2s}
+.canvas-toolbar{display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:0.5px solid var(--border-subtle);flex-shrink:0}
+.canvas-toolbar button{padding:4px 10px;font-size:12px;border:0.5px solid var(--border-medium);border-radius:var(--radius-md);background:var(--bg-secondary);color:var(--text-primary);cursor:pointer;transition:background .15s}
+.canvas-toolbar button:hover{background:var(--bg-tertiary)}
+.gen-btn{background:var(--accent) !important;color:#fff !important;border-color:transparent !important;font-weight:500}
+.gen-btn:hover{background:var(--accent-hover) !important}
+.theme-btn{width:30px;height:30px;padding:0 !important;display:flex;align-items:center;justify-content:center;font-size:15px}
+#svg-canvas{flex:1;width:100%;display:block}
+#canvas-info{font-size:11px;color:var(--text-tertiary)}
+
+/* sections */
+.section{border:0.5px solid var(--border-subtle);border-radius:var(--radius-md);}
+.section-header{display:flex;align-items:center;gap:7px;padding:7px 10px;background:var(--bg-primary);cursor:pointer;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--text-secondary);user-select:none;transition:background .15s}
+.section-header:hover{background:var(--bg-tertiary)}
+.section-header .chevron{margin-left:auto;font-size:10px;color:var(--text-tertiary);transition:transform .15s}
+.section-body{padding:10px;display:flex;flex-direction:column;gap:8px;border-top:0.5px solid var(--border-subtle);background:var(--bg-secondary)}
+.section-body.collapsed{display:none}
+.section-header .dot{width:7px;height:7px;border-radius:50%;background:var(--accent);flex-shrink:0}
+.section-header .dot.off{background:transparent;border:1.5px solid var(--accent)}
+
+/* controls */
+.row{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.row label{font-size:11px;color:var(--text-secondary);min-width:14px}
+input[type=number]{width:52px;font-size:12px;padding:3px 5px;border:0.5px solid var(--border-medium);border-radius:var(--radius-sm);background:var(--bg-primary);color:var(--text-primary);outline:none}
+input[type=number]:focus{border-color:var(--accent)}
+input[type=range]{flex:1;min-width:60px;accent-color:var(--accent)}
+input[type=text]{flex:1;font-size:12px;padding:3px 5px;border:0.5px solid var(--border-medium);border-radius:var(--radius-sm);background:var(--bg-primary);color:var(--text-primary);outline:none}
+input[type=text]:focus{border-color:var(--accent)}
+input[type=checkbox]{accent-color:var(--accent)}
+.val{font-size:11px;color:var(--text-tertiary);min-width:28px;text-align:right}
+
+/* segs */
+.seg{display:flex;gap:2px;flex-wrap:wrap}
+.seg button{font-size:11px;padding:2px 7px;border:0.5px solid var(--border-medium);border-radius:var(--radius-sm);background:var(--bg-primary);color:var(--text-secondary);cursor:pointer;white-space:nowrap;transition:background .1s,color .1s}
+.seg button:hover{background:var(--bg-tertiary)}
+.seg button.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+
+/* shapes */
+.shape-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:4px}
+.shape-btn{aspect-ratio:1;display:flex;align-items:center;justify-content:center;border:0.5px solid var(--border-medium);border-radius:var(--radius-sm);cursor:pointer;background:var(--bg-primary);padding:4px;transition:border-color .1s,background .1s}
+.shape-btn:hover{border-color:var(--accent);background:var(--accent-subtle)}
+.shape-btn.active{border-color:var(--accent);background:var(--accent-subtle)}
+.shape-btn svg{width:22px;height:22px;color:var(--text-primary)}
+
+/* palette */
+.palette-row{display:flex;gap:5px;flex-wrap:wrap}
+.pal-btn{width:22px;height:22px;border-radius:50%;border:2px solid transparent;cursor:pointer;transition:transform .1s,border-color .1s}
+.pal-btn:hover{transform:scale(1.15)}
+.pal-btn.active{border-color:var(--accent)}
+
+/* toggle row */
+.toggle-row{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-secondary)}
+
+/* scrollbar */
+.panel::-webkit-scrollbar{width:5px}
+.panel::-webkit-scrollbar-track{background:transparent}
+.panel::-webkit-scrollbar-thumb{background:var(--border-medium);border-radius:3px}
+
+
+</style>
+</head>
+<body>
+<div class="app">
+
+<div class="panel">
+  <div class="panel-title">VECTURNAL</div>
+
+  <!-- GRID SETTINGS -->
+  <div class="section">
+    <div class="section-header" onclick="toggle(this)">
+      <span class="dot"></span>Grid<span class="chevron">▾</span>
+    </div>
+    <div class="section-body" id="s-grid">
+      <div class="row">
+        <label title="Columns">C</label><input type="number" id="cols" value="16" min="1" max="200">
+        <label title="Rows">R</label><input type="number" id="rows" value="16" min="1" max="200">
+      </div>
+      <div class="row">
+        <label title="Cell Width">W</label><input type="number" id="offx" value="24" min="0" max="200">
+        <label title="Cell Height">H</label><input type="number" id="offy" value="24" min="0" max="200">
+      </div>
+
+      <div class="row">
+        <label>size</label><input type="range" id="szr" min="2" max="400" value="14" oninput="document.getElementById('szv').textContent=this.value"><span class="val" id="szv">14</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- SHAPE SETTINGS -->
+  <div class="section">
+    <div class="section-header" onclick="toggle(this)">
+      <span class="dot"></span>Shape<span class="chevron">▾</span>
+    </div>
+    <div class="section-body" id="s-shape">
+      <div class="shape-grid" id="shape-grid"></div>
+      <div class="row" style="margin-left:20px;">
+        <label style="font-size:12px;color:var(--text-primary)">CUSTOM PATH:</label>
+      </div>
+      <div class="row" style="margin:9px">
+        <label style="font-size:11px;color:var(--text-secondary)">d=</label>
+        <input type="text" id="custom-path" placeholder="M-10,0 L10,0" value="M 302 206 L 295 199 L 281 199 L 252 228 L 252 242 L 246 248 L 246 249 L 248 249 L 251 246 L 252 246 L 255 243 L 255 242 L 261 236 L 262 236 L 263 235 L 263 234 L 264 233 L 265 233 L 265 232 L 270 227 L 271 227 L 272 226 L 272 225 L 273 224 L 274 224 L 275 223 L 275 222 L 280 217 L 281 217 L 289 208 L 291 208 L 294 211 L 297 212 L 297 211 L 298 210 L 299 210 L 302 207 Z     M 96 205 L 96 207 L 101 212 L 102 212 L 106 208 L 108 208 L 149 249 L 151 249 L 151 247 L 150 247 L 145 242 L 145 227 L 117 199 L 102 199 Z     M 268 178 L 199 246 L 131 179 L 130 185 L 192 247 L 192 257 L 198 263 L 200 263 L 206 257 L 206 247 L 266 187 L 268 184 Z     M 311 82 L 304 88 L 304 146 L 305 146 L 325 167 L 325 202 L 326 203 L 332 203 L 332 152 L 318 138 L 318 89 L 317 87 Z     M 87 82 L 80 88 L 80 137 L 65 153 L 65 202 L 66 203 L 72 203 L 72 167 L 94 145 L 94 89 Z     M 90 78 L 98 87 L 98 147 L 76 169 L 76 206 L 65 208 L 65 234 L 75 244 L 92 243 L 92 222 L 98 215 L 90 205 L 102 194 L 119 195 L 150 226 L 150 241 L 158 249 L 172 249 L 198 275 L 225 249 L 243 246 L 248 226 L 280 194 L 296 194 L 308 206 L 300 214 L 306 244 L 323 244 L 332 235 L 332 207 L 321 206 L 321 168 L 300 147 L 300 86 L 307 77 L 297 67 L 272 67 L 262 57 L 211 57 L 211 64 L 220 64 L 233 77 L 276 77 L 290 92 L 290 123 L 276 138 L 273 185 L 210 248 L 209 260 L 199 269 L 188 259 L 188 249 L 125 186 L 122 139 L 108 124 L 108 91 L 122 77 L 164 77 L 176 65 L 187 64 L 187 58 L 136 57 L 126 67 L 101 67 Z     M 311 234 L 313 234 L 316 237 L 316 240 L 314 242 L 313 242 L 312 243 L 311 242 L 310 242 L 308 240 L 308 237 Z     M 85 234 L 87 234 L 90 237 L 90 239 L 87 242 L 84 242 L 82 240 L 82 236 L 83 235 L 84 235 Z     M 280 137 L 281 136 L 285 136 L 287 138 L 287 142 L 286 143 L 285 143 L 284 144 L 282 144 L 279 141 L 279 139 L 280 138 Z     M 114 135 L 115 136 L 116 136 L 118 138 L 118 139 L 119 140 L 118 141 L 118 142 L 117 143 L 116 143 L 115 144 L 114 144 L 113 143 L 112 143 L 110 141 L 110 139 Z">
+      </div>
+    </div>
+  </div>
+
+  <!-- ROTATION SETTINGS -->
+  <div class="section">
+    <div class="section-header" onclick="toggle(this)">
+      <span class="dot"></span>Rotation<span class="chevron">▾</span>
+    </div>
+    <div class="section-body" id="s-rot">
+
+      <div class="row"><span style="font-size:11px;color:var(--text-secondary)">mode</span>
+        <div class="seg" id="rot-mode">
+          <button class="active" data-v="random">random</button>
+          <button data-v="noise">noise</button>
+          <button data-v="sequence">sequence</button>
+        </div>
+      </div>
+
+      <div id="rot-seq-row" class="row" style="display:none">
+        <label style="min-width:auto;font-size:11px;color:var(--text-secondary)">V</label>
+        <input type="text" id="rot-vals" value="0, 90, 180, 270">
+      </div>
+
+      <div id="rot-range-row" class="row">
+        <label title="From">F</label><input type="number" id="rot-from" value="0" style="width:52px">
+        <label title="To">T</label><input type="number" id="rot-to" value="360" style="width:52px">
+      </div>
+
+    </div>
+  </div>
+
+  <!-- OPACITY SETTINGS -->
+  <div class="section">
+    <div class="section-header" onclick="toggle(this)">
+      <span class="dot"></span>Opacity<span class="chevron">▾</span>
+    </div>
+    <div class="section-body" id="s-opa">
+      <div class="row"><span style="font-size:11px;color:var(--text-secondary)">mode</span>
+        <div class="seg" id="opa-mode">
+          <button data-v="random">random</button>
+          <button class="active" data-v="noise">noise</button>
+          <button data-v="proximity">proximity</button>
+        </div>
+      </div>
+      <div class="row">
+        <label title="Density">D</label><input type="number" id="opa-d" value="60" style="width:48px">
+      </div>
+      <div class="row">
+        <label title="X Offset">X</label><input type="number" id="opa-x" value="0" style="width:48px">
+        <label title="Y Offset">Y</label><input type="number" id="opa-y" value="0" style="width:48px">
+      </div>
+      <div class="row">
+        <label title="From">F</label><input type="number" id="opa-from" value="0" style="width:52px">
+        <label title="To">T</label><input type="number" id="opa-to" value="100" style="width:52px">
+      </div>
+    </div>
+  </div>
+
+  <!-- SCALE SETTINGS -->
+  <div class="section">
+    <div class="section-header" onclick="toggle(this)">
+      <span class="dot"></span>Scale<span class="chevron">▾</span>
+    </div>
+    <div class="section-body" id="s-scale">
+      <div class="row"><span style="font-size:11px;color:var(--text-secondary)">mode</span>
+        <div class="seg" id="sc-mode">
+          <button data-v="random">random</button>
+          <button data-v="noise">noise</button>
+          <button class="active" data-v="proximity">proximity</button>
+        </div>
+      </div>
+      <div class="row">
+        <label title="From">F</label><input type="number" id="sc-from" value="0.1" step="0.05" style="width:52px">
+        <label title="To">T</label><input type="number" id="sc-to" value="1" step="0.05" style="width:52px">
+      </div>
+      <div class="row">
+        <label title="Center X">U</label><input type="number" id="sc-u" value="0.5" step="0.05" style="width:52px">
+        <label title="Center Y">V</label><input type="number" id="sc-v" value="0.5" step="0.05" style="width:52px">
+      </div>
+    </div>
+  </div>
+
+  <!-- COLOR SETTINGS -->
+  <div class="section">
+    <div class="section-header" onclick="toggle(this)">
+      <span class="dot"></span>Color<span class="chevron">▾</span>
+    </div>
+    <div class="section-body" id="s-color">
+      <div class="palette-row" id="palette-btns"></div>
+      <div class="row"><span style="font-size:11px;color:var(--text-secondary)">mode</span>
+        <div class="seg" id="col-mode">
+          <button class="active" data-v="random">random</button>
+          <button data-v="sequence">sequence</button>
+          <button data-v="noise">noise</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- POSITION JITTER SETTINGS -->
+  <div class="section">
+    <div class="section-header" onclick="toggle(this)">
+      <span class="dot"></span>Position jitter<span class="chevron">▾</span>
+    </div>
+    <div class="section-body" id="s-pos">
+      <div class="row"><label title="X Jitter">X</label><input type="range" id="pos-x" min="0" max="40" value="8" oninput="document.getElementById('pxv').textContent=this.value"><span class="val" id="pxv">8</span></div>
+      <div class="row"><label title="Y Jitter">Y</label><input type="range" id="pos-y" min="0" max="40" value="8" oninput="document.getElementById('pyv').textContent=this.value"><span class="val" id="pyv">8</span></div>
+    </div>
+  </div>
+
+  <!-- STROKE SETTINGS -->
+  <div class="section">
+    <div class="section-header" onclick="toggle(this)">
+      <span class="dot"></span>Stroke<span class="chevron">▾</span>
+    </div>
+    <div class="section-body" id="s-stroke">
+      <div class="row"><label title="Width">W</label><input type="range" id="strk-w" min="0.5" max="4" step="0.5" value="1" oninput="document.getElementById('swv').textContent=this.value"><span class="val" id="swv">1</span></div>
+    </div>
+  </div>
+
+  <!-- OTHER OPTIONS -->
+  <div class="section">
+    <div class="section-header" onclick="toggle(this)">
+      <span class="dot"></span>Options<span class="chevron">▾</span>
+    </div>
+    <div class="section-body" id="s-options">
+      <div class="toggle-row"><input type="checkbox" id="chkLiveview" checked><label>LIVEVIEW</label></div>
+      <div class="toggle-row"><input type="checkbox" id="chkStroke"><label>STROKE</label></div>
+      <div class="toggle-row"><input type="checkbox" id="chkPositionJitter"><label>JITTER</label></div>
+      <div class="toggle-row"><input type="checkbox" id="chkColoring" checked><label>COLOR</label></div>
+      <div class="toggle-row"><input type="checkbox" id="chkScaling" checked><label>SCALING</label></div>
+      <div class="toggle-row"><input type="checkbox" id="chkOpacity"><label>OPACITY</label></div>
+      <div class="toggle-row"><input type="checkbox" id="chkRotation"><label>ROTATION</label></div>
+    </div>
+  </div>
+
+</div>
+
+<div class="canvas-area">
+  <div class="canvas-toolbar">
+    <button class="gen-btn" onclick="generate()">Generate</button>
+    <button onclick="randomSeed()">↺ Reseed</button>
+    <button onclick="exportSVG()">Export SVG</button>
+    <span style="flex:1"></span>
+    <span id="canvas-info">0 clones</span>
+    <button class="theme-btn" id="theme-btn" onclick="toggleTheme()" title="Toggle light/dark">☀</button>
+  </div>
+  <svg id="svg-canvas" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600"></svg>
+</div>
+
+</div>
+<script>
+
+
+let seed = Math.random() * 9999 | 0;
+let darkMode = true;
+
+function seededRand() {
+  seed = (seed * 1664525 + 1013904223) & 0xffffffff;
+  return (seed >>> 0) / 4294967296;
+}
+function noise1d(i, freq) {
+  let v = Math.sin(i * (freq || 0.3) * 6.2831853) * 43758.5453;
+  return v - Math.floor(v);
+}
+function lerp(a, b, t) { return a + (b - a) * t; }
+
+// SET DARK MODE TO DEFAULT
+document.documentElement.setAttribute('data-theme', 'dark');
+document.getElementById('theme-btn').textContent = '☽';
+
+function toggleTheme() {
+  darkMode = !darkMode;
+  document.documentElement.setAttribute('data-theme', darkMode ? 'dark' : '');
+  document.getElementById('theme-btn').textContent = darkMode ? '☽' : '☀';
+}
+
+
+
+const SHAPES = {
+  circle:   (x,y,s) => `<circle cx="${x}" cy="${y}" r="${s*.48}"/>`,
+  rect:     (x,y,s) => `<rect x="${x-s*.42}" y="${y-s*.42}" width="${s*.84}" height="${s*.84}"/>`,
+  triangle: (x,y,s) => { let r=s*.5,h=r*Math.sqrt(3); return `<polygon points="${x},${y-r} ${x+h*.866},${y+r*.5} ${x-h*.866},${y+r*.5}"/>`; },
+  diamond:  (x,y,s) => `<polygon points="${x},${y-s*.5} ${x+s*.5},${y} ${x},${y+s*.5} ${x-s*.5},${y}"/>`,
+  cross:    (x,y,s) => { let t=s*.15,h=s*.42; return `<path d="M${x-t},${y-h}h${t*2}v${h-t}h${h-t}v${t*2}h${-(h-t)}v${h-t}h${-t*2}v${-(h-t)}h${-(h-t)}v${-t*2}h${h-t}Z"/>`; },
+  star:     (x,y,s) => { let p='',r1=s*.48,r2=s*.2; for(let i=0;i<10;i++){let a=i*Math.PI/5-Math.PI/2,r=i%2?r2:r1;p+=`${x+Math.cos(a)*r},${y+Math.sin(a)*r} `} return `<polygon points="${p.trim()}"/>`; },
+  ring:     (x,y,s) => `<circle cx="${x}" cy="${y}" r="${s*.42}" fill="none" stroke-width="${s*.12}"/>`,
+  hexagon:  (x,y,s) => { let p=''; for(let i=0;i<6;i++){let a=i*Math.PI/3;p+=`${x+Math.cos(a)*s*.48},${y+Math.sin(a)*s*.48} `} return `<polygon points="${p.trim()}"/>`; },
+  custom: (x,y,s) => { const d = document.getElementById('custom-path').value.trim(); if (!d) return `<circle cx="${x}" cy="${y}" r="${s*.48}"/>`; return `<path d="${d}" transform="translate(${x},${y}) scale(${s/100})"/>`; },
+
+};
+const shapeKeys = Object.keys(SHAPES);
+let activeShape = 'circle';
+
+const SHAPE_ICONS = {
+  circle:   '<circle cx="11" cy="11" r="8" fill="none" stroke="currentColor" stroke-width="1.5"/>',
+  rect:     '<rect x="3" y="3" width="18" height="18" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"/>',
+  triangle: '<polygon points="11,2 21,20 1,20" fill="none" stroke="currentColor" stroke-width="1.5"/>',
+  diamond:  '<polygon points="11,1 21,11 11,21 1,11" fill="none" stroke="currentColor" stroke-width="1.5"/>',
+  cross:    '<path d="M11 1v20M1 11h20" stroke="currentColor" stroke-width="1.5"/>',
+  star:     '<polygon points="11,1 13.2,7.8 20.5,7.8 14.7,12.1 17,18.9 11,14.5 5,18.9 7.3,12.1 1.5,7.8 8.8,7.8" fill="none" stroke="currentColor" stroke-width="1.5"/>',
+  ring:     '<circle cx="11" cy="11" r="8" fill="none" stroke="currentColor" stroke-width="2.5"/><circle cx="11" cy="11" r="4" fill="none" stroke="currentColor" stroke-width="1"/>',
+  hexagon:  '<polygon points="11,2 19.6,6.5 19.6,15.5 11,20 2.4,15.5 2.4,6.5" fill="none" stroke="currentColor" stroke-width="1.5"/>',
+  custom: '<text y="14" font-size="10" fill="currentColor" font-family="monospace">PATH</text>',
+};
+
+const PALETTES = {
+  red: ['#F4B9B2','#F06A5C','#D83B2A','#99210F','#711506'],
+  orange: ['#FBC490','#F57C3B','#D94E1A','#992E0C','#711904'],
+  yellow: ['#FCEFA6','#F9C948','#D99E1B','#995F0A','#713E05'],
+  green: ['#B5E3C0','#6FD18B','#2D9F4A','#1A672E','#10491F'],
+  blue:   ['#B5D4F4','#85B7EB','#378ADD','#185FA5','#0C447C'],
+  indigo: ['#C1C8F9','#8A95E6','#4D5FC2','#312E7B','#1B1A4F'],
+  violet: ['#E5C1F9','#B86FE3','#7D3FAF','#53266B','#391A4B'],
+  magenta:['#F9A1E0','#E04AB8','#A91C7F','#67294F','#481B33'],
+  brown:  ['#D7BFAE','#A66F5C','#6B3F2A','#3D1E16','#29120D'],
+  turquiose: ['#A0F0E3','#5CE1C9','#1FAE9B','#13695F','#0A473F'],
+  blacks: ['#E0E0E0','#A0A0A0','#606060','#303030','#101010'],
+  whites: ['#FFFFFF','#F0F0F0','#D9D9D9','#B3B3B3','#808080'],
+  pastels: ['#FFD1DC','#FFE4B5','#FFFFB3','#D1FFD1','#D1E0FF'],
+  earthtones: ['#D7C4A3','#BFA078','#8C6B4F','#5C3A2E','#3B1F14'],
+};
+let activePalette = 'blue';
+
+function buildPaletteUI() {
+  const c = document.getElementById('palette-btns');
+  Object.keys(PALETTES).forEach(k => {
+    const b = document.createElement('button');
+    b.className = 'pal-btn' + (k === activePalette ? ' active' : '');
+    b.style.background = PALETTES[k][2];
+    b.title = k;
+    b.onclick = () => {
+      activePalette = k;
+      document.querySelectorAll('.pal-btn').forEach(x => x.classList.remove('active'));
+      b.classList.add('active');
+      liveGenerate();
+    };
+    c.appendChild(b);
+  });
+}
+
+function setupOptions() {
+  const map = {
+    chkRotation:      's-rot',
+    chkOpacity:       's-opa',
+    chkScaling:       's-scale',
+    chkColoring:      's-color',
+    chkPositionJitter:'s-pos',
+    chkStroke:        's-stroke',
+  };
+  Object.entries(map).forEach(([chkId, sectionId]) => {
+    const chk = document.getElementById(chkId);
+    const section = document.getElementById(sectionId);
+    const dot = section.closest('.section').querySelector('.dot');
+    const syncDot = () => dot.classList.toggle('off', !chk.checked);
+    chk.addEventListener('change', () => { syncDot(); liveGenerate(); });
+    syncDot();
+  });
+  document.getElementById('chkLiveview').addEventListener('change', liveGenerate);
+}
+
+function liveGenerate() {
+  if (document.getElementById('chkLiveview').checked) generate();
+}
+
+function buildShapeUI() {
+  const g = document.getElementById('shape-grid');
+  shapeKeys.forEach(k => {
+    const d = document.createElement('div');
+    d.className = 'shape-btn' + (k === activeShape ? ' active' : '');
+    d.innerHTML = `<svg viewBox="0 0 22 22" xmlns="http://www.w3.org/2000/svg">${SHAPE_ICONS[k]}</svg>`;
+    d.onclick = () => {
+      activeShape = k;
+      document.querySelectorAll('.shape-btn').forEach(x => x.classList.remove('active'));
+      d.classList.add('active');
+      liveGenerate();
+    };
+    g.appendChild(d);
+  });
+}
+
+function toggle(hdr) {
+  const body = hdr.nextElementSibling;
+  const chev = hdr.querySelector('.chevron');
+  body.classList.toggle('collapsed');
+  chev.style.transform = body.classList.contains('collapsed') ? 'rotate(-90deg)' : '';
+}
+
+function setupSegs() {
+  document.querySelectorAll('.seg').forEach(seg => {
+    seg.querySelectorAll('button').forEach(btn => {
+      btn.onclick = () => {
+        seg.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        updateRotUI();
+      };
+    });
+  });
+}
+
+function getActive(segId) {
+  const a = document.querySelector('#' + segId + ' button.active');
+  return a ? a.dataset.v : 'random';
+}
+
+function updateRotUI() {
+  const m = getActive('rot-mode');
+  document.getElementById('rot-seq-row').style.display = m === 'sequence' ? 'flex' : 'none';
+  document.getElementById('rot-range-row').style.display = m === 'sequence' ? 'none' : 'flex';
+}
+
+function randomSeed() { seed = Math.random() * 9999 | 0; generate(); }
+
+function getModVal(mode, i, total, from, to, ni) {
+  if (mode === 'noise') return lerp(from, to, noise1d(ni + i * 0.17));
+  if (mode === 'proximity') {
+    const cols = +document.getElementById('cols').value;
+    const rows = +document.getElementById('rows').value;
+    const cu = +document.getElementById('sc-u').value;
+    const cv = +document.getElementById('sc-v').value;
+    const col = i % cols, row = Math.floor(i / cols);
+    const dx = col / Math.max(cols - 1, 1) - cu;
+    const dy = row / Math.max(rows - 1, 1) - cv;
+    const dist = Math.sqrt(dx * dx + dy * dy) * Math.SQRT2;
+    return lerp(from, to, Math.max(0, Math.min(1, 1 - dist)));
+  }
+  return lerp(from, to, seededRand());
+}
+
+function getColor(mode, i) {
+  const pal = PALETTES[activePalette];
+  if (mode === 'sequence') return pal[i % pal.length];
+  if (mode === 'noise') return pal[Math.min(pal.length - 1, Math.floor(noise1d(i * 0.13) * pal.length))];
+  return pal[Math.floor(seededRand() * pal.length)];
+}
+
+function generate() {
+  const cols = +document.getElementById('cols').value || 8;
+  const rows = +document.getElementById('rows').value || 8;
+  const offx = +document.getElementById('offx').value || 24;
+  const offy = +document.getElementById('offy').value || 24;
+  const sz   = +document.getElementById('szr').value || 14;
+
+  const rotOn   = document.getElementById('chkRotation').checked;
+  const rotMode = getActive('rot-mode');
+  const rotFrom = +document.getElementById('rot-from').value;
+  const rotTo   = +document.getElementById('rot-to').value;
+  const rotSeq  = document.getElementById('rot-vals').value.split(',').map(v => +v.trim()).filter(v => !isNaN(v));
+
+  const opaOn   = document.getElementById('chkOpacity').checked;
+  const opaMode = getActive('opa-mode');
+  const opaFrom = +document.getElementById('opa-from').value;
+  const opaTo   = +document.getElementById('opa-to').value;
+  const opaDist = +document.getElementById('opa-d').value || 60;
+
+  const scOn   = document.getElementById('chkScaling').checked;
+  const scMode = getActive('sc-mode');
+  const scFrom = +document.getElementById('sc-from').value;
+  const scTo   = +document.getElementById('sc-to').value;
+
+  const colOn   = document.getElementById('chkColoring').checked;
+  const colMode = getActive('col-mode');
+
+  const posOn  = document.getElementById('chkPositionJitter').checked;
+  const posXA  = +document.getElementById('pos-x').value;
+  const posYA  = +document.getElementById('pos-y').value;
+
+  const strkOn = document.getElementById('chkStroke').checked;
+  const strkW  = +document.getElementById('strk-w').value;
+
+  const total = cols * rows;
+  const gw = (cols - 1) * offx + sz * 2;
+  const gh = (rows - 1) * offy + sz * 2;
+  const vw = Math.max(gw + 48, 300);
+  const vh = Math.max(gh + 48, 200);
+  const ox = (vw - gw) / 2, oy = (vh - gh) / 2;
+
+  const svg = document.getElementById('svg-canvas');
+  svg.setAttribute('viewBox', `0 0 ${vw} ${vh}`);
+
+  let parts = [];
+
+  for (let i = 0; i < total; i++) {
+    const col = i % cols, row = Math.floor(i / cols);
+    let cx = ox + col * offx + sz;
+    let cy = oy + row * offy + sz;
+
+    if (posOn) {
+      cx += (seededRand() * 2 - 1) * posXA;
+      cy += (seededRand() * 2 - 1) * posYA;
+    }
+
+    const rot = rotOn
+      ? (rotMode === 'sequence' ? rotSeq[i % rotSeq.length] : getModVal(rotMode, i, total, rotFrom, rotTo, i * 0.31))
+      : 0;
+
+    let opa = 100;
+    if (opaOn) {
+      if (opaMode === 'proximity') {
+        const dx = cx - vw / 2, dy = cy - vh / 2;
+        opa = lerp(opaTo, opaFrom, Math.min(1, Math.sqrt(dx*dx+dy*dy) / opaDist));
+      } else {
+        opa = getModVal(opaMode, i, total, opaFrom, opaTo, i * 0.23);
+      }
+    }
+
+    const sc = scOn ? getModVal(scMode, i, total, scFrom, scTo, i * 0.19) : 1;
+    const fill = colOn ? getColor(colMode, i) : '#888888';
+    const stroke = strkOn ? (colOn ? getColor(colMode, i) : '#888888') : 'none';
+    const fillAttr = `fill="${fill}"`;
+    const strokeAttr = `stroke="${stroke}" stroke-width="${strkOn ? strkW : 0}"`;
+    const opAttr = `opacity="${(opa / 100).toFixed(2)}"`;
+
+    const shapeSrc = SHAPES[activeShape](cx, cy, sz * sc);
+
+    // combine existing transform (e.g. translate/scale on custom path) with rotation
+    let finalShape;
+    if (rot) {
+      const rotStr = `rotate(${rot.toFixed(1)},${cx.toFixed(1)},${cy.toFixed(1)})`;
+      const existingMatch = shapeSrc.match(/transform="([^"]*)"/);
+      if (existingMatch) {
+        finalShape = shapeSrc.replace(/transform="[^"]*"/, `transform="${existingMatch[1]} ${rotStr}"`);
+      } else {
+        finalShape = shapeSrc.replace(/\s*\/?>$/, ` transform="${rotStr}"/>`);
+      }
+    } else {
+      finalShape = shapeSrc;
+    }
+
+    parts.push(finalShape.replace(/\s*\/?>$/, ` ${fillAttr} ${strokeAttr} ${opAttr}/>`));
+  }
+
+  svg.innerHTML = parts.join('\n');
+  document.getElementById('canvas-info').textContent = `${total} clones`;
+}
+function exportSVG() {
+  const svg = document.getElementById('svg-canvas');
+  const blob = new Blob([svg.outerHTML], { type: 'image/svg+xml' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'vecturnal-export.svg';
+  a.click();
+}
+
+buildPaletteUI();
+buildShapeUI();
+setupSegs();
+updateRotUI();
+setupOptions();
+generate();
+
+document.querySelectorAll('input[type=number], input[type=range], input[type=text]').forEach(el => {
+  el.addEventListener('input', liveGenerate);
+});
+document.querySelectorAll('.seg').forEach(seg => {
+  seg.addEventListener('click', liveGenerate);
+});
+document.querySelectorAll('.shape-btn').forEach(btn => {
+  btn.addEventListener('click', liveGenerate);
+});
+document.querySelectorAll('.pal-btn').forEach(btn => {
+  btn.addEventListener('click', liveGenerate);
+});
+document.getElementById('custom-path').addEventListener('input', () => {
+  if (activeShape === 'custom') liveGenerate();
+});
+</script>
+</body>
+</html>
